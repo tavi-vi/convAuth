@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Login</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+  <body style="margin: 0;">
+    <div style="padding-top:35vh;">
+      <form name="login" id="loginform" method="post">
+        <table style="margin: 0 auto;">
+          <tbody>
+            <tr>
+              <td>Username&nbsp;</td>
+              <td colspan="2">
+                <input type="text" name="username" id="username" required="required" maxlength="20" pattern="[A-Za-z0-9_?\.]{1,20}" autofocus="autofocus" placeholder="Username">
+              </td>
+            </tr>
+            <tr>
+              <td>Password&nbsp;</td>
+              <td colspan="2">
+                <input type="password" name="password" id="password" required="required" maxlength="100" pattern=".{6,100}" placeholder="Password">
+              </td>
+            </tr>
+            <tr>
+              <td></td>
+              <td style="width: 6em;"></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td colspan="2">
+                <input type="checkbox" id="keeplogged" name="keeplogged" value="1">
+                <label for="keeplogged">Remember me</label>
+              </td>
+              <td>
+                <input type="submit" value="Log in" name="submit" style="float: right;">
+              </td>
+            </tr>
+            <tr>
+              <td colspan="3" style="text-align: center;height: 2em;color: darkred;">{{if .LoginFailure}}Incorrect username or password{{end}}</td>
+            </tr>
+          </tbody>
+        </table>
+      </form>
+    </div>
+  </body>
+</html>
