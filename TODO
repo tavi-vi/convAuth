@@ -7,8 +7,4 @@ secure config (disable directory listing, anything default in nginx)
 
 add config file for changing the port listened on, and what the public domain name is (where to limit cookies to)
 
-add logging (for failed auth)
-
-add online login file updates
-
-change name to ConvAuth
+Add security headers (reference wtfismyip)
