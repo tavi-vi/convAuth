@@ -52,7 +52,6 @@ type loginTemplateData struct {
 }
 
 type loginRequest struct {
-	redirect   string // TODO: remove
 	keeplogged bool
 	username   string
 	password   string
@@ -73,9 +72,9 @@ func extractLoginRequest(f url.Values) (loginRequest, bool) {
 	if !ok {
 		kl = []string{"false"}
 	}
-	rd, rdok := f["redirect"]
 
-	if len(un) != 1 && len(pw) != 1 && len(kl) != 1 && len(un) != 1 && (!rdok || len(rd) != 1) {
+	// Make sure each field was defined exactly once
+	if len(un) != 1 && len(pw) != 1 && len(kl) != 1 && len(un) != 1 {
 		return req, false
 	}
 
@@ -85,11 +84,6 @@ func extractLoginRequest(f url.Values) (loginRequest, bool) {
 		req.keeplogged = true
 	} else {
 		req.keeplogged = false
-	}
-	if rdok {
-		req.redirect = rd[0]
-	} else {
-		req.redirect = ""
 	}
 	return req, true
 }
@@ -224,6 +218,18 @@ func serveHttp(ctx context.Context) error {
 }
 
 var ExitDeferWaitGroup sync.WaitGroup
+var ExitDeferExitCode int = 130
+
+func init() {
+	go func() {
+		sigChan := make(chan os.Signal)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGHUP, syscall.SIGTERM)
+
+		<-sigChan
+		ExitDeferWaitGroup.Wait()
+		os.Exit(ExitDeferExitCode)
+	}()
+}
 
 type ExitDefer struct{
 	exitOnce sync.Once
@@ -418,15 +424,6 @@ func main() {
 	time.Local = time.UTC // Don't leak our timezone.
 	syscall.Umask(0077)   // Make all files default to inaccessible to everyone else.
 	
-	go func() {
-		sigChan := make(chan os.Signal)
-		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGHUP, syscall.SIGTERM)
-
-		<-sigChan
-		ExitDeferWaitGroup.Wait()
-		os.Exit(130)
-	}()
-
 	if len(os.Args) > 1 {
 		os.Exit(subcommand(os.Args[1], os.Args[2:]))
 	}
