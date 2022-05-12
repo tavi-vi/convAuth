@@ -5,6 +5,6 @@ Disable caching for response that contain sensitive data.
 
 secure config (disable directory listing, anything default in nginx)
 
-add config file for changing the port listened on, and what the public domain name is (where to limit cookies to)
-
 Add security headers (reference wtfismyip)
+
+Implement "log out everywhere"
