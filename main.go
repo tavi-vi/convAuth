@@ -18,22 +18,29 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 )
 
-var authProxyDir string
+var authProxyStateDir string
 var authProxyDB string
 var authProxySock string
+var authProxyConfigDir string
+var authProxyConfig string
 
 func init() {
-	authProxyDir, err := xdg.DataFile("convAuth")
+	var err error
+	authProxyStateDir, err = xdg.DataFile("convAuth")
 	if err != nil {
 		panic(err)
 	}
-	authProxyDB = path.Join(authProxyDir, "db.json")
-	authProxySock = path.Join(authProxyDir, "socket")
+	authProxyDB = path.Join(authProxyStateDir, "db.json")
+	authProxySock = path.Join(authProxyStateDir, "socket")
+	authProxyConfigDir, err = xdg.ConfigFile("convAuth")
+	authProxyConfig = path.Join(authProxyConfigDir, "config")
+
 }
 
 //go:embed logout.html
@@ -104,16 +111,19 @@ func cookieAuthz(r *http.Request) bool {
 }
 
 func setCookie(w http.ResponseWriter, content string, expires *time.Time) {
-	var expiresString string = ""
-	if expires != nil {
-		expiresString = fmt.Sprintf("; Expires=%s", expires.Format(time.RFC1123))
+	c := http.Cookie{
+		Name:  cookieName,
+		Value: content,
+
+		Domain:   serverConfig.cookieDomain,
+		Secure:   true,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
 	}
-	w.Header().Add("Set-Cookie",
-		fmt.Sprintf("%s=%s%s; secure; HttpOnly; SameSite=Strict",
-			cookieName, content,
-			expiresString,
-		),
-	)
+	if expires != nil {
+		c.Expires = *expires
+	}
+	w.Header().Add("Set-Cookie", c.String())
 }
 
 func badRequest(w http.ResponseWriter) {
@@ -198,7 +208,7 @@ func serveHttp(ctx context.Context) error {
 	})
 
 	s := &http.Server{
-		Addr:           ":8080",
+		Addr:           serverConfig.listenAddress,
 		Handler:        h,
 		ReadTimeout:    3 * time.Second,
 		WriteTimeout:   3 * time.Second,
@@ -231,12 +241,12 @@ func init() {
 	}()
 }
 
-type ExitDefer struct{
-	exitOnce sync.Once
-	sigChan chan os.Signal
+type ExitDefer struct {
+	exitOnce   sync.Once
+	sigChan    chan os.Signal
 	funcsMutex sync.Mutex
-	funcs []func()
-	cancel func()
+	funcs      []func()
+	cancel     func()
 }
 
 func NewExitDefer() *ExitDefer {
@@ -246,7 +256,7 @@ func NewExitDefer() *ExitDefer {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	ed := ExitDefer{
-		cancel: cancel,
+		cancel:  cancel,
 		sigChan: sigChan,
 	}
 	go func() {
@@ -262,7 +272,7 @@ func NewExitDefer() *ExitDefer {
 
 func (ed *ExitDefer) Exit() {
 	ed.exitOnce.Do(func() {
-		for i:=1; i<=len(ed.funcs); i++ {
+		for i := 1; i <= len(ed.funcs); i++ {
 			ed.funcs[len(ed.funcs)-i]()
 		}
 		ed.cancel()
@@ -362,6 +372,12 @@ func serve() int {
 		panic(err)
 	}
 
+	err = updateConfig(os.Args[1:])
+	if err != nil {
+		log.Println("Configuration error:", err)
+		return 1
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	var wg sync.WaitGroup
 	exitCodeChan := make(chan int)
@@ -423,8 +439,8 @@ EventLoop:
 func main() {
 	time.Local = time.UTC // Don't leak our timezone.
 	syscall.Umask(0077)   // Make all files default to inaccessible to everyone else.
-	
-	if len(os.Args) > 1 {
+
+	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") {
 		os.Exit(subcommand(os.Args[1], os.Args[2:]))
 	}
 	os.Exit(serve())
