@@ -11,7 +11,6 @@ import (
 	"flag"
 	"fmt"
 	"html/template"
-	_ "io"
 	"log"
 	"net/http"
 	"net/url"
@@ -40,7 +39,6 @@ func init() {
 	authProxySock = path.Join(authProxyStateDir, "socket")
 	authProxyConfigDir, err = xdg.ConfigFile("convAuth")
 	authProxyConfig = path.Join(authProxyConfigDir, "config")
-
 }
 
 //go:embed logout.html
