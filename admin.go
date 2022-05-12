@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	"time"
 	"os"
+	"time"
 )
 
 func setPasswordOnline(username string) int {
-	c, err := net.DialTimeout("unix", authProxySock, 10 * time.Second)
+	c, err := net.DialTimeout("unix", authProxySock, 10*time.Second)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to connect to server: %s", err)
 		return 69
