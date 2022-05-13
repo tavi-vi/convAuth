@@ -11,7 +11,7 @@
         {
           defaultPackage = pkgs.buildGoModule rec {
             pname = "convauth";
-            version = "0.1.1";
+            version = "0.2";
 
             src = self;
 
