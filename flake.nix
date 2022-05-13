@@ -13,12 +13,7 @@
             pname = "convauth";
             version = "0.1.1";
 
-            src = pkgs.fetchFromGitHub {
-              owner  = "tavi-vi";
-              repo   = "convAuth";
-              rev    = "v${version}";
-              sha256 = "sha256-bivp8Mo6yBGPgUs62+K2Fb4xEjfL2OnHphU28UFmu6A=";
-            };
+            src = self;
 
             vendorSha256 = "sha256-RhQK8YiGkiLrGUKmH+LySUJzLrMWOgBsHPh72zt0n7o=";
 
