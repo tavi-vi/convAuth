@@ -6,5 +6,3 @@ Disable caching for response that contain sensitive data.
 secure config (disable directory listing, anything default in nginx)
 
 Add security headers (reference wtfismyip)
-
-Add command to remove user

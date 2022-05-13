@@ -343,6 +343,28 @@ func setPasswordOffline(username string, force bool) int {
 	return 0
 }
 
+func removeUserOffline(username string, force bool) int {
+	if !force {
+		_, err := os.Stat(authProxySock)
+		if !errors.Is(err, os.ErrNotExist) {
+			println("Server appears to be running, not updating database.")
+			return 75
+		}
+	} else {
+		fmt.Fprintln(os.Stderr, "Any forced changes may be lost or corrupt the database.")
+	}
+	err := fsUserEntries.Update(authProxyDB)
+	if err != nil {
+		panic(err)
+	}
+	err = fsUserEntries.Remove(username)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to remove user: %s\n", err)
+		return 70
+	}
+	return 0
+}
+
 func subcommand(command string, args []string) int {
 	switch command {
 	case "passwd":
@@ -367,6 +389,29 @@ func subcommand(command string, args []string) int {
 			setPasswordOffline(username, *force)
 		} else {
 			setPasswordOnline(username)
+		}
+	case "rmuser":
+		fset := flag.NewFlagSet("", flag.ContinueOnError)
+		fset.Usage = func() {
+			fmt.Fprintf(fset.Output(), "Usage: convauth %s [flag]... [--] <username>\n", command)
+			fset.PrintDefaults()
+		}
+		offline := fset.Bool("offline", false, "Update database directly")
+		force := fset.Bool("force", false, "Force database update")
+		err := fset.Parse(args)
+		if err != nil {
+			return 2
+		}
+		if fset.NArg() != 1 {
+			fset.Usage()
+			return 2
+		}
+		username := fset.Arg(0)
+
+		if *offline {
+			removeUserOffline(username, *force)
+		} else {
+			removeUserOnline(username)
 		}
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", command)

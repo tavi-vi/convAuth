@@ -5,11 +5,44 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
 	"time"
 )
+
+func removeUserOnline(username string) int {
+	c, err := net.DialTimeout("unix", authProxySock, 10*time.Second)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to connect to server: %s", err)
+		return 69
+	}
+
+	header := make([]byte, 8)
+	binary.BigEndian.PutUint32(header[0:], 1)
+	binary.BigEndian.PutUint32(header[4:], uint32(len(username)))
+
+	_, err = c.Write(header)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Server appears to have hung up: %s", err)
+		return 76
+	}
+	_, err = io.WriteString(c, username)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Server appears to have hung up: %s", err)
+		return 76
+	}
+
+	return 0
+}
+
+func adminRemoveUser(data []byte) {
+	err := fsUserEntries.Remove(string(data))
+	if err != nil {
+		log.Printf("Failed to remove user: %s\n", err)
+	}
+}
 
 func setPasswordOnline(username string) int {
 	c, err := net.DialTimeout("unix", authProxySock, 10*time.Second)
@@ -104,6 +137,8 @@ func serveAdminSocket(ctx context.Context) error {
 			switch reqType {
 			case 0:
 				adminInsertUser(data)
+			case 1:
+				adminRemoveUser(data)
 			default:
 				return
 			}
