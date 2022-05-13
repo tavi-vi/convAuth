@@ -464,6 +464,8 @@ func serve() int {
 		if err != nil {
 			panic(err)
 		}
+		fsUserEntries.location = authProxyDB
+		fsUserEntries.users.Store(map[string]userEntry{})
 		err = fsUserEntries.WriteConfig()
 		if err != nil {
 			panic(err)
