@@ -96,10 +96,27 @@ func extractLoginRequest(f url.Values) (loginRequest, bool) {
 	return req, true
 }
 
-func cookieAuthz(r *http.Request) (string, bool) {
+type authResult struct{
+	err error
+	username string
+}
+
+func (ar authResult) Expired() bool {
+	return ar.err == expiredToken
+}
+
+func (ar authResult) User() string {
+	return ar.username
+}
+
+func (ar authResult) Success() bool {
+	return ar.err == nil
+}
+
+func cookieAuthz(r *http.Request) authResult {
 	cookie, err := r.Cookie(cookieName)
 	if err != nil {
-		return "", false
+		return authResult{err, ""}
 	}
 	username, err := authz(cookie.Value, r.Host, r.URL)
 	if err == expiredToken {
@@ -108,7 +125,7 @@ func cookieAuthz(r *http.Request) (string, bool) {
 		log.Printf("Failed token authentication: %s tried to authenticate", r.RemoteAddr)
 	}
 
-	return username, err == nil
+	return authResult{err, username}
 }
 
 func setCookie(w http.ResponseWriter, content string, expires *time.Time) {
@@ -148,10 +165,14 @@ func serveHttp(ctx context.Context) error {
 		w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
 		switch r.Method {
 		case "GET":
-			_, authorized := cookieAuthz(r)
-			if authorized {
+			ar := cookieAuthz(r)
+			if ar.Success() {
 				w.Write(logoutFile)
 			} else {
+				if ar.Expired() {
+					epoch := time.Unix(60, 0)
+					setCookie(w, "", &epoch)
+				}
 				loginTemplate.Execute(w, loginTemplateData{false})
 			}
 		case "POST":
@@ -197,9 +218,12 @@ func serveHttp(ctx context.Context) error {
 				setCookie(w, "", &epoch)
 				http.Redirect(w, r, r.URL.String(), http.StatusSeeOther)
 			case "Log out everywhere":
-				username, authorized := cookieAuthz(r)
-				if authorized {
-					_ = fsUserEntries.ExpireTokens(username) // Don't know what to do with the error here tbh
+				ar := cookieAuthz(r)
+				if ar.Success() {
+					err = fsUserEntries.ExpireTokens(ar.User()) // Don't know what to do with the error here tbh
+					if err != nil {
+						log.Printf("Failed to expire tokens for user %q: %s", ar.User(), err)
+					}
 					http.Redirect(w, r, r.URL.String(), http.StatusSeeOther)
 				} else {
 					http.Redirect(w, r, r.URL.String(), http.StatusSeeOther)
@@ -215,8 +239,7 @@ func serveHttp(ctx context.Context) error {
 	})
 
 	h.HandleFunc("/checkToken", func(w http.ResponseWriter, r *http.Request) {
-		_, authorized := cookieAuthz(r)
-		if authorized {
+		if cookieAuthz(r).Success() {
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, "Success")
 		} else {
