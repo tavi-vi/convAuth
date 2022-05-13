@@ -135,6 +135,17 @@ func badRequest(w http.ResponseWriter) {
 func serveHttp(ctx context.Context) error {
 	h := http.NewServeMux()
 	h.HandleFunc(string(loginLocation), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
+		w.Header().Set("X-DNS-Prefetch-Control", "off")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
 		switch r.Method {
 		case "GET":
 			_, authorized := cookieAuthz(r)
