@@ -460,12 +460,13 @@ func serve() int {
 
 	_, err := os.Stat(authProxyDB)
 	if err != nil {
-		err := os.MkdirAll(authProxyStateDir, 0600)
+		err := os.MkdirAll(authProxyStateDir, 0700)
 		if err != nil {
 			panic(err)
 		}
 		fsUserEntries.location = authProxyDB
 		fsUserEntries.users.Store(map[string]userEntry{})
+
 		err = fsUserEntries.WriteConfig()
 		if err != nil {
 			panic(err)
