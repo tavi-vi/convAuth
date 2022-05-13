@@ -63,6 +63,14 @@ func decodeUserEntries(data []byte) (map[string]userEntry, error) {
 	return users, nil
 }
 
+func (ue *userEntries) WriteConfig() error {
+	ue.m.Lock()
+	defer ue.m.Unlock()
+
+	jdata := ue.marshal()
+	return os.WriteFile(ue.location, jdata, 0600)
+}
+
 func (ue *userEntries) writeChanges() error {
 	jdata := ue.marshal()
 	return os.WriteFile(ue.location, jdata, 0600)
@@ -180,23 +188,6 @@ func (ue *userEntries) marshal() []byte {
 }
 
 var fsUserEntries userEntries
-
-func init() {
-
-	// // We don't need this, we don't write to the file.
-	// dir, err := Stat(authProxyDir)
-	// if err == nil {
-	//     if !dir.IsDir() {
-	//         panic("config path exists and isn't a directory")
-	//     }
-	// } else {
-	//     err = os.Mkdir(authProxyDir)
-	//     if err != nil {
-	//         panic(err)
-	//     }
-	// }
-
-}
 
 func authn(username string, password string) bool {
 	entry, ok := fsUserEntries.Lookup(username)

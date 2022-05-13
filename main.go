@@ -458,7 +458,18 @@ func serve() int {
 	sc := make(chan os.Signal, 16)
 	signal.Notify(sc, os.Interrupt)
 
-	err := fsUserEntries.Update(authProxyDB)
+	_, err := os.Stat(authProxyDB)
+	if err != nil {
+		err := os.MkdirAll(authProxyStateDir, 0600)
+		if err != nil {
+			panic(err)
+		}
+		err = fsUserEntries.WriteConfig()
+		if err != nil {
+			panic(err)
+		}
+	}
+	err = fsUserEntries.Update(authProxyDB)
 	if err != nil {
 		panic(err)
 	}
