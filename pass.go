@@ -20,6 +20,11 @@ func init() {
 	hashSemaphore = semaphore.NewWeighted(15)
 }
 
+type HashPair struct {
+	HashAlgo int32
+	PassHash string
+}
+
 type algoEntry struct {
 	hash    func(pass string, arg uint) string
 	compare func(pass, hash string, arg uint) bool
@@ -38,7 +43,7 @@ func init() {
 	fakePassHash = make([]userEntry, 0, len(passAlgos))
 	for algo, entry := range passAlgos {
 		hash := entry.hash("hunter2D#EXdx4&%$JmP68", entry.arg) // maybe change to randomly generated.
-		fakePassHash = append(fakePassHash, userEntry{int32(algo), hash})
+		fakePassHash = append(fakePassHash, userEntry{Hash: HashPair{int32(algo), hash}})
 	}
 
 	n, err := rand.Read(fakePassEntropy)
@@ -99,7 +104,7 @@ func argon2Compare(pass, hash1 string, arg uint) bool {
 	return subtle.ConstantTimeCompare([]byte(hash1), []byte(hash2)) == 1 // allocation :/
 }
 
-func passHash(pass string) (int32, string) {
+func passHash(pass string) HashPair {
 	err := hashSemaphore.Acquire(context.Background(), 1)
 	if err != nil {
 		panic(err)
@@ -109,25 +114,25 @@ func passHash(pass string) (int32, string) {
 	hashAlgo := int32(len(passAlgos) - 1)
 	entry := passAlgos[hashAlgo]
 	passHash := entry.hash(pass, entry.arg)
-	return hashAlgo, passHash
+	return HashPair{hashAlgo, passHash}
 }
 
-func passCompare(pass, hash string, hashAlgo int32) (bool, error) {
+func passCompare(pass string, hash HashPair) (bool, error) {
 	err := hashSemaphore.Acquire(context.Background(), 1)
 	if err != nil {
 		panic(err)
 	}
 	defer hashSemaphore.Release(1)
 
-	if hashAlgo < 0 || int(hashAlgo) >= len(passAlgos) {
+	if hash.HashAlgo < 0 || int(hash.HashAlgo) >= len(passAlgos) {
 		panic("Fatal error, incorrect algo number")
 	}
-	entry := passAlgos[hashAlgo]
+	entry := passAlgos[hash.HashAlgo]
 
 	err = nil
-	if int(hashAlgo) < len(passAlgos)-1 {
+	if int(hash.HashAlgo) < len(passAlgos)-1 {
 		err = oldAlgo
 	}
 
-	return entry.compare(pass, hash, entry.arg), err
+	return entry.compare(pass, hash.PassHash, entry.arg), err
 }

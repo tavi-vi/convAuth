@@ -70,30 +70,38 @@ func issueToken(username string) (string, time.Time) {
 
 var expiredToken error = errors.New("Token expired")
 
-func authz(cookie, hostname string, u *url.URL) error {
+func authz(cookie, hostname string, u *url.URL) (string, error) {
 	failedAuth := errors.New("Failed to authorize")
 	sc := strings.Split(cookie, ".")
 	if len(sc) != 2 {
-		return failedAuth
+		return "", failedAuth
 	}
 	tokData, err := base64.StdEncoding.DecodeString(sc[0])
 	if err != nil {
-		return failedAuth
+		return "", failedAuth
 	}
 	hmacResult, err := base64.StdEncoding.DecodeString(sc[1])
 	if err != nil {
-		return failedAuth
+		return "", failedAuth
 	}
 	if !checkHMACSHA512(tokData, hmacResult) {
-		return failedAuth
+		return "", failedAuth
 	}
 	var tok authToken
 	err = json.Unmarshal(tokData, &tok)
 	if err != nil {
 		panic(err)
 	}
-	if tok.Expires.Before(time.Now()) {
-		return expiredToken
+	now := time.Now()
+	if tok.Expires.Before(now) {
+		return "", expiredToken
 	}
-	return nil
+	entry, ok := fsUserEntries.Lookup(tok.Username)
+	if !ok {
+		return "", failedAuth
+	}
+	if tok.Issued.Before(entry.TokenCutoff) {
+		return "", expiredToken
+	}
+	return tok.Username, nil
 }

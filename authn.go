@@ -8,14 +8,16 @@ import (
 	"os"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 var dataVersion uint32 = 1
 
 type userEntryJson struct {
-	Username *string
-	HashAlgo *int32
-	PassHash *string
+	Username    *string
+	HashAlgo    *int32
+	PassHash    *string
+	TokenCutoff *time.Time
 }
 
 type userEntriesJson struct {
@@ -24,8 +26,8 @@ type userEntriesJson struct {
 }
 
 type userEntry struct {
-	HashAlgo int32
-	PassHash string
+	Hash        HashPair
+	TokenCutoff time.Time
 }
 
 type userEntries struct {
@@ -53,10 +55,10 @@ func decodeUserEntries(data []byte) (map[string]userEntry, error) {
 	}
 
 	for _, v := range uj.Users {
-		if v.Username == nil || v.HashAlgo == nil || v.PassHash == nil {
+		if v.Username == nil || v.HashAlgo == nil || v.PassHash == nil || v.TokenCutoff == nil {
 			return users, badFormat
 		}
-		users[*v.Username] = userEntry{*v.HashAlgo, *v.PassHash}
+		users[*v.Username] = userEntry{HashPair{*v.HashAlgo, *v.PassHash}, *v.TokenCutoff}
 	}
 	return users, nil
 }
@@ -139,6 +141,18 @@ func (ue *userEntries) Insert(username string, entry userEntry) error {
 	return ue.writeChanges()
 }
 
+func (ue *userEntries) ExpireTokens(username string) error {
+	ue.m.Lock()
+	defer ue.m.Unlock()
+
+	users := ue.users.Load().(map[string]userEntry)
+	entry := users[username]
+	entry.TokenCutoff = time.Now()
+	users[username] = entry
+
+	return ue.writeChanges()
+}
+
 // Warning: Doesn't lock ue.
 func (ue *userEntries) marshal() []byte {
 	users := ue.users.Load().(map[string]userEntry)
@@ -146,7 +160,12 @@ func (ue *userEntries) marshal() []byte {
 	var uej userEntriesJson
 	uej.Version = &dataVersion
 	for k, v := range users {
-		uej.Users = append(uej.Users, userEntryJson{Username: &k, HashAlgo: &v.HashAlgo, PassHash: &v.PassHash})
+		uej.Users = append(uej.Users, userEntryJson{
+			Username:    &k,
+			HashAlgo:    &v.Hash.HashAlgo,
+			PassHash:    &v.Hash.PassHash,
+			TokenCutoff: &v.TokenCutoff,
+		})
 	}
 	jdata, err := json.Marshal(uej)
 	if err != nil {
@@ -178,7 +197,7 @@ var loginFailure = errors.New("Invalid username or password.")
 
 func authn(username string, password string) bool {
 	entry, ok := fsUserEntries.Lookup(username)
-	passCmp, err := passCompare(password, entry.PassHash, entry.HashAlgo)
+	passCmp, err := passCompare(password, entry.Hash)
 	if errors.Is(err, oldAlgo) {
 		println("OLD ALGO")
 	}

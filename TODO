@@ -7,6 +7,4 @@ secure config (disable directory listing, anything default in nginx)
 
 Add security headers (reference wtfismyip)
 
-Implement "log out everywhere"
-
 Add command to remove user

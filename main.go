@@ -93,19 +93,19 @@ func extractLoginRequest(f url.Values) (loginRequest, bool) {
 	return req, true
 }
 
-func cookieAuthz(r *http.Request) bool {
+func cookieAuthz(r *http.Request) (string, bool) {
 	cookie, err := r.Cookie(cookieName)
 	if err != nil {
-		return false
+		return "", false
 	}
-	err = authz(cookie.Value, r.Host, r.URL)
+	username, err := authz(cookie.Value, r.Host, r.URL)
 	if err == expiredToken {
 		log.Printf("Failed token authentication, expired: %s tried to authenticate", r.RemoteAddr)
 	} else if err != nil {
 		log.Printf("Failed token authentication: %s tried to authenticate", r.RemoteAddr)
 	}
 
-	return err == nil
+	return username, err == nil
 }
 
 func setCookie(w http.ResponseWriter, content string, expires *time.Time) {
@@ -135,7 +135,8 @@ func serveHttp(ctx context.Context) error {
 	h.HandleFunc(string(loginLocation), func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			if cookieAuthz(r) {
+			_, authorized := cookieAuthz(r)
+			if authorized {
 				w.Write(logoutFile)
 			} else {
 				loginTemplate.Execute(w, loginTemplateData{false})
@@ -180,7 +181,9 @@ func serveHttp(ctx context.Context) error {
 				setCookie(w, "", &epoch)
 				http.Redirect(w, r, r.URL.String(), http.StatusSeeOther)
 			case "Log out everywhere":
-				if cookieAuthz(r) {
+				username, authorized := cookieAuthz(r)
+				if authorized {
+					_ = fsUserEntries.ExpireTokens(username) // Don't know what to do with the error here tbh
 					http.Redirect(w, r, r.URL.String(), http.StatusSeeOther)
 				} else {
 					http.Redirect(w, r, r.URL.String(), http.StatusSeeOther)
@@ -196,7 +199,8 @@ func serveHttp(ctx context.Context) error {
 	})
 
 	h.HandleFunc("/checkToken", func(w http.ResponseWriter, r *http.Request) {
-		if cookieAuthz(r) {
+		_, authorized := cookieAuthz(r)
+		if authorized {
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, "Success")
 		} else {
@@ -304,8 +308,8 @@ func passwordPrompt() (userEntry, error) {
 		fmt.Fprintln(os.Stderr, "Unable to read password")
 		return userEntry{}, errors.New("Unable to read password")
 	}
-	algo, hash := passHash(password)
-	return userEntry{algo, hash}, nil
+	hash := passHash(password)
+	return userEntry{hash, time.Now()}, nil
 }
 
 func setPasswordOffline(username string, force bool) int {

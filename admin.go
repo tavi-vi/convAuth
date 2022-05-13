@@ -20,10 +20,12 @@ func setPasswordOnline(username string) int {
 	if err != nil {
 		return 1
 	}
+	now := time.Now()
 	data, err := json.Marshal(userEntryJson{
-		Username: &username,
-		HashAlgo: &entry.HashAlgo,
-		PassHash: &entry.PassHash,
+		Username:    &username,
+		HashAlgo:    &entry.Hash.HashAlgo,
+		PassHash:    &entry.Hash.PassHash,
+		TokenCutoff: &now,
 	})
 	if err != nil {
 		panic(err)
@@ -49,14 +51,15 @@ func adminInsertUser(data []byte) {
 	json.Unmarshal(data, &ue1j)
 	if ue1j.Username == nil ||
 		ue1j.HashAlgo == nil ||
-		ue1j.PassHash == nil {
+		ue1j.PassHash == nil ||
+		ue1j.TokenCutoff == nil {
 
 		return
 	}
 
 	ue1 := userEntry{
-		HashAlgo: *ue1j.HashAlgo,
-		PassHash: *ue1j.PassHash,
+		Hash:        HashPair{*ue1j.HashAlgo, *ue1j.PassHash},
+		TokenCutoff: *ue1j.TokenCutoff,
 	}
 	fsUserEntries.Insert(*ue1j.Username, ue1)
 }
