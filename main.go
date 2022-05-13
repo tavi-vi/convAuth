@@ -228,7 +228,8 @@ func serveHttp(ctx context.Context) error {
 var ExitDeferWaitGroup sync.WaitGroup
 var ExitDeferExitCode int = 130
 
-func init() {
+// Halts after exit defers finish, if a signal is caught
+func startExitDeferHalter() {
 	go func() {
 		sigChan := make(chan os.Signal)
 		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGHUP, syscall.SIGTERM)
@@ -439,6 +440,7 @@ func main() {
 	syscall.Umask(0077)   // Make all files default to inaccessible to everyone else.
 
 	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") {
+		startExitDeferHalter()
 		os.Exit(subcommand(os.Args[1], os.Args[2:]))
 	}
 	os.Exit(serve())
