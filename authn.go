@@ -95,14 +95,6 @@ func (ue *userEntries) Update(location string) error {
 	return nil
 }
 
-func (ue *userEntries) ChangeLocation(location string) error {
-	ue.m.Lock()
-	defer ue.m.Unlock()
-
-	ue.location = location
-	return ue.writeChanges()
-}
-
 func (ue *userEntries) Lookup(username string) (userEntry, bool) {
 	ue.m.RLock()
 	defer ue.m.RUnlock()
