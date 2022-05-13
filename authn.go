@@ -116,7 +116,10 @@ func (ue *userEntries) Lookup(username string) (userEntry, bool) {
 	var iFromLast int
 	if len(fakePassHash) > 1 {
 		hash := sha256.New()
-		io.WriteString(hash, username)
+		_, err := io.WriteString(hash, username)
+		if err != nil {
+			panic(err)
+		}
 		hash.Write(fakePassEntropy)
 		b := hash.Sum(nil)[0]
 		iFromLast = int(b / 254)
@@ -137,6 +140,16 @@ func (ue *userEntries) Insert(username string, entry userEntry) error {
 
 	users := ue.users.Load().(map[string]userEntry)
 	users[username] = entry
+
+	return ue.writeChanges()
+}
+
+func (ue *userEntries) Remove(username string) error {
+	ue.m.Lock()
+	defer ue.m.Unlock()
+
+	users := ue.users.Load().(map[string]userEntry)
+	delete(users, username)
 
 	return ue.writeChanges()
 }
@@ -192,8 +205,6 @@ func init() {
 	// }
 
 }
-
-var loginFailure = errors.New("Invalid username or password.")
 
 func authn(username string, password string) bool {
 	entry, ok := fsUserEntries.Lookup(username)

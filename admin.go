@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"time"
@@ -48,7 +49,10 @@ func setPasswordOnline(username string) int {
 
 func adminInsertUser(data []byte) {
 	var ue1j userEntryJson
-	json.Unmarshal(data, &ue1j)
+	err := json.Unmarshal(data, &ue1j)
+	if err != nil {
+		panic(err)
+	}
 	if ue1j.Username == nil ||
 		ue1j.HashAlgo == nil ||
 		ue1j.PassHash == nil ||
@@ -61,7 +65,10 @@ func adminInsertUser(data []byte) {
 		Hash:        HashPair{*ue1j.HashAlgo, *ue1j.PassHash},
 		TokenCutoff: *ue1j.TokenCutoff,
 	}
-	fsUserEntries.Insert(*ue1j.Username, ue1)
+	err = fsUserEntries.Insert(*ue1j.Username, ue1)
+	if err != nil {
+		log.Printf("Failed to insert user: %s\n", err)
+	}
 }
 
 func serveAdminSocket(ctx context.Context) error {

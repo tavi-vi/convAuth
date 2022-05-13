@@ -38,6 +38,9 @@ func init() {
 	authProxyDB = path.Join(authProxyStateDir, "db.json")
 	authProxySock = path.Join(authProxyStateDir, "socket")
 	authProxyConfigDir, err = xdg.ConfigFile("convAuth")
+	if err != nil {
+		panic(err)
+	}
 	authProxyConfig = path.Join(authProxyConfigDir, "config")
 }
 
@@ -127,7 +130,6 @@ func setCookie(w http.ResponseWriter, content string, expires *time.Time) {
 func badRequest(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusBadRequest)
 	fmt.Fprint(w, "Bad Request")
-	return
 }
 
 func serveHttp(ctx context.Context) error {
@@ -142,7 +144,10 @@ func serveHttp(ctx context.Context) error {
 				loginTemplate.Execute(w, loginTemplateData{false})
 			}
 		case "POST":
-			r.ParseForm()
+			err := r.ParseForm()
+			if err != nil {
+				badRequest(w)
+			}
 			formRequest, ok := r.Form["submit"]
 			if !ok {
 				badRequest(w)
@@ -235,7 +240,7 @@ var ExitDeferExitCode int = 130
 // Halts after exit defers finish, if a signal is caught
 func startExitDeferHalter() {
 	go func() {
-		sigChan := make(chan os.Signal)
+		sigChan := make(chan os.Signal, 16)
 		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGHUP, syscall.SIGTERM)
 
 		<-sigChan
@@ -330,7 +335,11 @@ func setPasswordOffline(username string, force bool) int {
 	if err != nil {
 		return 1
 	}
-	fsUserEntries.Insert(username, entry)
+	err = fsUserEntries.Insert(username, entry)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to insert user: %s\n", err)
+		return 70
+	}
 	return 0
 }
 
@@ -360,14 +369,14 @@ func subcommand(command string, args []string) int {
 			setPasswordOnline(username)
 		}
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown command: %s", command)
+		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", command)
 		return 1
 	}
 	return 0
 }
 
 func serve() int {
-	sc := make(chan os.Signal)
+	sc := make(chan os.Signal, 16)
 	signal.Notify(sc, os.Interrupt)
 
 	err := fsUserEntries.Update(authProxyDB)
@@ -382,6 +391,7 @@ func serve() int {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel() // Should never need this, but, just in case.
 	var wg sync.WaitGroup
 	exitCodeChan := make(chan int)
 
