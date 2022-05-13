@@ -96,8 +96,8 @@ func extractLoginRequest(f url.Values) (loginRequest, bool) {
 	return req, true
 }
 
-type authResult struct{
-	err error
+type authResult struct {
+	err      error
 	username string
 }
 
