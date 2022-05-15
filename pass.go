@@ -34,6 +34,12 @@ var passAlgos []algoEntry = []algoEntry{
 	{hash: argon2Hash, compare: argon2Compare, arg: 0},
 }
 
+func init() {
+	if len(passAlgos) > 1 {
+		panic("make sure passwords are hashed on the server when changing them online.")
+	}
+}
+
 // Used for timing obfuscation
 var fakePassHash []userEntry
 var fakePassEntropy []byte = make([]byte, 128)
