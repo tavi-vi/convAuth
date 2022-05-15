@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
@@ -105,12 +104,6 @@ func argon2Compare(pass, hash1 string, arg uint) bool {
 }
 
 func passHash(pass string) HashPair {
-	err := hashSemaphore.Acquire(context.Background(), 1)
-	if err != nil {
-		panic(err)
-	}
-	defer hashSemaphore.Release(1)
-
 	hashAlgo := int32(len(passAlgos) - 1)
 	entry := passAlgos[hashAlgo]
 	passHash := entry.hash(pass, entry.arg)
@@ -118,18 +111,12 @@ func passHash(pass string) HashPair {
 }
 
 func passCompare(pass string, hash HashPair) (bool, error) {
-	err := hashSemaphore.Acquire(context.Background(), 1)
-	if err != nil {
-		panic(err)
-	}
-	defer hashSemaphore.Release(1)
-
 	if hash.HashAlgo < 0 || int(hash.HashAlgo) >= len(passAlgos) {
 		panic("Fatal error, incorrect algo number")
 	}
 	entry := passAlgos[hash.HashAlgo]
 
-	err = nil
+	var err error
 	if int(hash.HashAlgo) < len(passAlgos)-1 {
 		err = oldAlgo
 	}

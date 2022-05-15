@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -189,11 +190,29 @@ func (ue *userEntries) marshal() []byte {
 
 var fsUserEntries userEntries
 
-func authn(username string, password string) bool {
+func newUser(ctx context.Context, password string) (userEntry, error) {
+	err := hashSemaphore.Acquire(context.Background(), 1)
+	if err != nil {
+		return userEntry{}, err
+	}
+	defer hashSemaphore.Release(1)
+
+	hash := passHash(password)
+	return userEntry{hash, time.Now()}, nil
+}
+
+func authn(ctx context.Context, username string, password string) (bool, error) {
+	err := hashSemaphore.Acquire(context.Background(), 1)
+	if err != nil {
+		return false, err
+	}
+	defer hashSemaphore.Release(1)
+
 	entry, ok := fsUserEntries.Lookup(username)
 	passCmp, err := passCompare(password, entry.Hash)
 	if errors.Is(err, oldAlgo) {
 		println("OLD ALGO")
+		err = nil
 	}
-	return ok && passCmp
+	return ok && passCmp && err == nil, nil
 }

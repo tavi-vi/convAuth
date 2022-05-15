@@ -192,7 +192,12 @@ func serveHttp(ctx context.Context) error {
 					badRequest(w)
 					return
 				}
-				if authn(lr.username, lr.password) {
+				authSuccess, err := authn(r.Context(), lr.username, lr.password)
+				if err != nil {
+					// context canceled
+					return
+				}
+				if authSuccess {
 					log.Printf("Successful password authentication: %s authenticated as %s", r.RemoteAddr, lr.username)
 
 					var expires *time.Time
@@ -347,8 +352,7 @@ func passwordPrompt() (userEntry, error) {
 		fmt.Fprintln(os.Stderr, "Unable to read password")
 		return userEntry{}, errors.New("Unable to read password")
 	}
-	hash := passHash(password)
-	return userEntry{hash, time.Now()}, nil
+	return newUser(context.Background(), password)
 }
 
 func setPasswordOffline(username string, force bool) int {
