@@ -53,7 +53,7 @@ var loginFile string
 var loginTemplate = template.Must(template.New("login").Parse(loginFile))
 
 const loginLocation = template.URL("/login")
-const cookieName = "go-auth-proxy_session"
+const cookieName = "convauth_session"
 
 type loginTemplateData struct {
 	LoginFailure bool
