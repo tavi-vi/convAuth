@@ -52,7 +52,6 @@ var loginFile string
 
 var loginTemplate = template.Must(template.New("login").Parse(loginFile))
 
-const loginLocation = template.URL("/login")
 const cookieName = "convauth_session"
 
 type loginTemplateData struct {
@@ -156,7 +155,7 @@ func serveHttp(ctx context.Context) error {
 		log.Printf("Request to unknown path %q", r.URL)
 		w.WriteHeader(http.StatusNotFound)
 	})
-	h.HandleFunc(string(loginLocation), func(w http.ResponseWriter, r *http.Request) {
+	h.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate")
