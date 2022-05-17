@@ -151,6 +151,11 @@ func badRequest(w http.ResponseWriter) {
 
 func serveHttp(ctx context.Context) error {
 	h := http.NewServeMux()
+
+	h.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Request to unknown path %q", r.URL)
+		w.WriteHeader(http.StatusNotFound)
+	})
 	h.HandleFunc(string(loginLocation), func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("X-Frame-Options", "DENY")
