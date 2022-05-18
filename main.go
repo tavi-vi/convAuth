@@ -133,7 +133,7 @@ func setCookie(w http.ResponseWriter, content string, expires *time.Time) {
 		Value: content,
 
 		Domain:   serverConfig.cookieDomain,
-		Secure:   true,
+		Secure:   !serverConfig.insecureCookie,
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 	}
