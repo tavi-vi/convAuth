@@ -135,7 +135,7 @@ func setCookie(w http.ResponseWriter, content string, expires *time.Time) {
 		Domain:   serverConfig.cookieDomain,
 		Secure:   !serverConfig.insecureCookie,
 		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 	}
 	if expires != nil {
 		c.Expires = *expires
