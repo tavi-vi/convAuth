@@ -6,9 +6,9 @@ import (
 )
 
 var serverConfig struct {
-	cookieDomain   string
-	listenAddress  string
-	insecure       bool
+	cookieDomain  string
+	listenAddress string
+	insecure      bool
 }
 
 func updateConfig(args []string) error {
