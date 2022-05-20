@@ -133,7 +133,7 @@ func setCookie(w http.ResponseWriter, content string, expires *time.Time) {
 		Value: content,
 
 		Domain:   serverConfig.cookieDomain,
-		Secure:   !serverConfig.insecureCookie,
+		Secure:   !serverConfig.insecure,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	}
@@ -166,7 +166,9 @@ func serveHttp(ctx context.Context) error {
 		w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
 		w.Header().Set("X-DNS-Prefetch-Control", "off")
 		w.Header().Set("Referrer-Policy", "no-referrer")
-		w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
+		if !serverConfig.insecure {
+			w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
+		}
 		switch r.Method {
 		case "GET":
 			ar := cookieAuthz(r)

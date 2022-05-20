@@ -8,14 +8,14 @@ import (
 var serverConfig struct {
 	cookieDomain   string
 	listenAddress  string
-	insecureCookie bool
+	insecure       bool
 }
 
 func updateConfig(args []string) error {
 	fset := flag.NewFlagSet("", flag.ContinueOnError)
 	fset.StringVar(&serverConfig.cookieDomain, "cookieDomain", "", "The domain that the cookie is limited to")
 	fset.StringVar(&serverConfig.listenAddress, "listenAddress", ":8080", "Address the server listens on")
-	fset.BoolVar(&serverConfig.insecureCookie, "insecureCookie", false, "Turn off cookie security features (for testing)")
+	fset.BoolVar(&serverConfig.insecure, "insecure", false, "Turn off cookie security feaatures, and HSTS")
 
 	_ = ini.MapTo(&serverConfig, authProxyConfig)
 
