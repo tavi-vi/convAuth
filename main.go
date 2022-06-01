@@ -146,9 +146,13 @@ func setCookie(w http.ResponseWriter, content string, expires *time.Time) {
 
 func newLoginTemplateData(r *http.Request, failed bool) loginTemplateData {
 	location := url.URL{
-		Scheme: r.URL.Scheme,
 		Host:   serverConfig.authSubdomain + serverConfig.cookieDomain,
 		Path:   "/login",
+	}
+	if serverConfig.insecure {
+		location.Scheme = "http"
+	} else {
+		location.Scheme = "https"
 	}
 	return loginTemplateData{template.URL(location.String()), failed}
 }
