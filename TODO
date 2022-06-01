@@ -4,3 +4,5 @@ Encrypt all data in transit with secure protocols such as TLS with forward secre
 Disable caching for response that contain sensitive data.
 
 secure config (disable directory listing, anything default in nginx)
+
+fix ini config loading (struct members need to be exported for MapTo to work)
