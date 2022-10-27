@@ -55,7 +55,6 @@ var loginTemplate = template.Must(template.New("login").Parse(loginFile))
 const cookieName = "convauth_session"
 
 type loginTemplateData struct {
-	Location     template.URL
 	LoginFailure bool
 }
 
@@ -144,19 +143,6 @@ func setCookie(w http.ResponseWriter, content string, expires *time.Time) {
 	w.Header().Add("Set-Cookie", c.String())
 }
 
-func newLoginTemplateData(r *http.Request, failed bool) loginTemplateData {
-	location := url.URL{
-		Host: serverConfig.authSubdomain + "." + serverConfig.cookieDomain,
-		Path: "/login",
-	}
-	if serverConfig.insecure {
-		location.Scheme = "http"
-	} else {
-		location.Scheme = "https"
-	}
-	return loginTemplateData{template.URL(location.String()), failed}
-}
-
 func badRequest(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusBadRequest)
 	fmt.Fprint(w, "Bad Request")
@@ -193,7 +179,7 @@ func serveHttp(ctx context.Context) error {
 					epoch := time.Unix(60, 0)
 					setCookie(w, "", &epoch)
 				}
-				loginTemplate.Execute(w, newLoginTemplateData(r, false))
+				loginTemplate.Execute(w, loginTemplateData{false})
 			}
 		case "POST":
 			err := r.ParseForm()
@@ -236,7 +222,7 @@ func serveHttp(ctx context.Context) error {
 				} else {
 					log.Printf("Failed password authentication: %s tried to authenticate as %s", r.RemoteAddr, lr.username)
 
-					loginTemplate.Execute(w, newLoginTemplateData(r, true))
+					loginTemplate.Execute(w, loginTemplateData{true})
 				}
 			case "Log out":
 				epoch := time.Unix(60, 0)
