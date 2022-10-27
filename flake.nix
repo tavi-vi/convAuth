@@ -6,10 +6,10 @@
       (system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          inherit (pkgs) lib buildGoModule;
+          inherit (pkgs) lib buildGoModule mkShell;
         in
         {
-          defaultPackage = pkgs.buildGoModule rec {
+          packages.default = buildGoModule rec {
             pname = "convauth";
             version = "0.2";
 
@@ -22,6 +22,9 @@
               homepage     = "https://github.com/tavi-vi/convAuth";
               license      = lib.licenses.bsd0;
             };
+          };
+          devShells.default = mkShell {
+            nativeBuildInputs = with pkgs; [ go ];
           };
         }
       );
